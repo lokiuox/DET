@@ -2,7 +2,6 @@
 
 #inspired from: https://books.google.fr/books?id=cHOmCwAAQBAJ&pg=PA747&lpg=PA747&dq=sdp+smime&source=bl&ots=34LYW5iJyc&sig=4a1szVXKMDtqQWUb0K2gM29AgL8&hl=fr&sa=X&ved=0ahUKEwjbm5Tf1JzTAhUGfxoKHX-UCQUQ6AEIVTAG#v=onepage&q=sdp%20smime&f=false
 
-from __future__ import print_function
 from dpkt import sip
 import socket
 import string

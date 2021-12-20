@@ -1,4 +1,3 @@
-from __future__ import print_function
 from binascii import hexlify, unhexlify
 from dnslib import DNSRecord
 import socket

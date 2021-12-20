@@ -1,5 +1,4 @@
 from binascii import hexlify
-from __future__ import print_function
 
 try:
     from scapy.all import *
