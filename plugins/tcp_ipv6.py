@@ -1,5 +1,4 @@
-from binascii import hexlify
-from __future__ import print_function
+from binascii import hexlify, unhexlify
 import socket
 import sys
 from random import choice
@@ -31,7 +30,7 @@ def listen():
 def sniff(handler):
     port = config['port']
     server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    sockaddr = ('::1', port)
+    sockaddr = ('::', port)
     server_socket.bind(sockaddr)
     server_socket.listen(1)
     app_exfiltrate.log_message('info', "[tcp_ipv6] Starting server on interface '::1' and port {}...".format(port))
@@ -40,7 +39,7 @@ def sniff(handler):
         # print ('Server: Connected by', addr)
         app_exfiltrate.log_message('info', "[tcp_ipv6] Client {} connected and sending data...".format(addr))
         data = conn.recv(4096)
-        handler(data.decode('hex'))
+        handler(unhexlify(data).decode())
         conn.send(data)
         conn.close()
 

