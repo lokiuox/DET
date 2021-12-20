@@ -1,4 +1,3 @@
-from __future__ import print_function
 import smtpd
 import asyncore
 import email
@@ -15,8 +14,8 @@ subject = "det:tookit"
 
 class CustomSMTPServer(smtpd.SMTPServer):
 
-    def process_message(self, peer, mailfrom, rcpttos, data):
-        body = email.message_from_string(data).get_payload()
+    def process_message(self, peer, mailfrom, rcpttos, data, **kwargs):
+        body = email.message_from_string(data.decode()).get_payload()
         app_exfiltrate.log_message('info', "[smtp] Received email "\
                 "from {}".format(peer))
         try:
@@ -72,7 +71,7 @@ def listen():
 def proxy():
     port = config['port']
     app_exfiltrate.log_message('info', "[proxy] [smtp] Starting SMTP server on port {}".format(port))
-    server = CustomSMTPServer(('', port), None)
+    server = CustomSMTPServer(('0.0.0.0', port), None)
     server.handler = relay_email
     asyncore.loop()
 
