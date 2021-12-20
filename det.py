@@ -236,7 +236,7 @@ class Exfiltration(object):
     def retrieve_data(self, data):
         global files
         try:
-            message = data.decode()
+            message = data
             if (message.count("|!|") >= 2):
                 info("Received {0} bytes".format(len(message)))
                 message = message.split("|!|")

@@ -42,7 +42,7 @@ class S(BaseHTTPRequestHandler):
         if tmp[0] == "data":
             try:
                 data = base64.b64decode(urllib.parse.unquote(tmp[1]).encode())
-                self.server.handler(data)
+                self.server.handler(data.decode())
             except Exception as e:
                 print(e)
                 pass
@@ -56,7 +56,7 @@ class S(BaseHTTPRequestHandler):
             try:
                 data = base64.b64decode(string.encode())
                 #app_exfiltrate.retrieve_data(data)
-                self.server.handler(data)
+                self.server.handler(data.decode())
             except Exception as e:
                 print(e)
                 pass
@@ -68,7 +68,7 @@ class S(BaseHTTPRequestHandler):
                 try:
                     data = base64.b64decode(string.encode())
                     #app_exfiltrate.retrieve_data(data)
-                    self.server.handler(data)
+                    self.server.handler(data.decode())
                 except Exception as e:
                     print(e)
                     pass
