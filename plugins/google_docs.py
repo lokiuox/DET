@@ -1,6 +1,6 @@
 import requests
 import base64
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
 
 config = None

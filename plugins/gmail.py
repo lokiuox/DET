@@ -5,8 +5,8 @@ from smtplib import SMTP
 import email
 import time
 import sys
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 app_exfiltrate = None
 gmail_user = ''

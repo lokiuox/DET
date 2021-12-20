@@ -26,7 +26,7 @@ class CustomSMTPServer(smtpd.SMTPServer):
             pass
 
 def send(data):
-    if config.has_key('proxies') and config['proxies'] != [""]:
+    if 'proxies' in config and config['proxies'] != [""]:
         targets = [config['target']] + config['proxies']
         target = choice(targets)
     else:
@@ -65,7 +65,7 @@ def relay_email(data):
 def listen():
     port = config['port']
     app_exfiltrate.log_message('info', "[smtp] Starting SMTP server on port {}".format(port))
-    server = CustomSMTPServer(('', port), None)
+    server = CustomSMTPServer(('0.0.0.0', port), None)
     server.handler = app_exfiltrate.retrieve_data
     asyncore.loop()
 
