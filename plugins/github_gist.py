@@ -1,5 +1,5 @@
 from github import *
-import binascii import hexlify, unhexlify
+from binascii import hexlify, unhexlify
 import github
 import time
 import requests
