@@ -441,16 +441,13 @@ def main():
             else:
                 for plugin_name in app.get_plugins().keys():
                     thread = ExfiltrateFile(app, file_to_send, plugin_name)
-                    threads.append(thread)
                     thread.daemon = True
                     thread.start()
+                    thread.join()
 
     # Join for the threads
     for thread in threads:
-        while True:
-            thread.join(1)
-            if not thread.is_alive():
-                break
+        thread.join()
 
 if __name__ == '__main__':
     main()
