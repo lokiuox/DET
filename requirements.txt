@@ -2,7 +2,7 @@ tweepy==3.10.0
 pysocks
 dnslib
 pycrypto
-slackclient
+slack_sdk
 bitstring
 dpkt>=1.9.1
 pyftpdlib
