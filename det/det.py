@@ -461,8 +461,11 @@ def main():
                     thread.join()
         
         # Wait for all threads to join
-        for thread in threads:
-            thread.join()
+        try:
+            for thread in threads:
+                thread.join()
+        except KeyboardInterrupt:
+            pass
 
     ok("Goodbye!")
 
