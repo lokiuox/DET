@@ -205,8 +205,7 @@ class Exfiltration(object):
             f = {}
             f['checksum'] = message[3].lower()
             f['filename'] = message[1].lower()
-            f['data'] = []
-            f['packets_order'] = []
+            f['data'] = {}
             f['packets_len'] = -1
             files[jobid] = f
             warning(f"[{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
@@ -218,10 +217,9 @@ class Exfiltration(object):
         fname = files[jobid]['filename']
         filename = "%s.%s" % (fname.replace(
             os.path.pathsep, ''), time.strftime("%Y-%m-%d.%H:%M:%S", time.gmtime()))
-        #Reorder packets before reassembling / ugly one-liner hack
-        files[jobid]['packets_order'], files[jobid]['data'] = \
-                [list(x) for x in zip(*sorted(zip(files[jobid]['packets_order'], files[jobid]['data'])))]
-        content = ''.join(files[jobid]['data'])
+
+        ordered_data = [p[1] for p in sorted(files[jobid]['data'].items())]
+        content = ''.join(ordered_data)
         content = unhexlify(content)
         content = aes_decrypt(content, self.KEY)
         if COMPRESSION:
@@ -258,25 +256,25 @@ class Exfiltration(object):
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
                     if files[jobid]['packets_len'] == len(files[jobid]['data']):
-                        warning(f"[!][{jobid}] DONE packet received")
+                        warning(f"[{jobid}][!] DONE packet received")
                         self.retrieve_file(jobid)
                     else:
-                        warning(f"[!][{jobid}] Received the last packet, but some are still missing. Waiting for the rest...")
+                        warning(f"[{jobid}][!] Received the last packet, but some are still missing. Waiting for the rest...")
                 # data packet
                 else:
+                    packet_nr = int(message[1])
                     # making sure there's a jobid for this file
-                    if (jobid in files and message[1] not in files[jobid]['packets_order']):
-                        info(f"[{jobid}] DATA packet #{message[1]} received")
-                        files[jobid]['data'].append(''.join(message[2:]))
-                        files[jobid]['packets_order'].append(int(message[1]))
+                    if (jobid in files and packet_nr not in files[jobid]['data']):
+                        info(f"[{jobid}] DATA packet #{packet_nr} received")
+                        files[jobid]['data'][packet_nr] = ''.join(message[2:])
                         #In case this packet was the last missing one
                         if files[jobid]['packets_len'] == len(files[jobid]['data']):
                             warning(f"[{jobid}] last DATA packet received, reconstructing file")
                             self.retrieve_file(jobid)
-                    elif jobid in files:
+                    elif jobid in files and packet_nr in files[jobid]['data']:
                         warning(f"[{jobid}] DUPLICATE DATA file received, ignoring.")
                     else:
-                        warning(f"[!][{jobid}] received DATA PACKET for unknown JOBID!")
+                        warning(f"[{jobid}][!] received DATA PACKET for unknown JOBID!")
         except Exception:
             traceback.print_exc()
             raise
