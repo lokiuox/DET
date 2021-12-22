@@ -5,6 +5,12 @@ import urllib.parse
 from random import choice
 import platform
 import traceback
+try:
+    import importlib.resources as pkg_resources
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    import importlib_resources as pkg_resources
+from . import res
 
 host_os = platform.system()
 
@@ -18,8 +24,7 @@ else:
 headers = requests.utils.default_headers()
 headers.update({'User-Agent': user_agent})
 
-with open('plugins/misc/default_apache_page.html', 'rb') as html_file:
-    html_content = html_file.read()
+html_content = pkg_resources.read_binary(res, 'default_apache_page.html')
 
 config = None
 app_exfiltrate = None
