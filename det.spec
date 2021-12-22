@@ -5,11 +5,11 @@ block_cipher = None
 import sys
 sys.modules['FixTk'] = None
 
-a = Analysis(['det.py'],
+a = Analysis(['cli.py'],
              pathex=['.'],
              binaries=[],
-             datas=[('plugins', 'plugins'), ('config-sample.json', '.')],
-             hiddenimports=['plugins/dns', 'plugins/icmp'],
+             datas=[('det/plugins', 'plugins')],
+             hiddenimports=['det'],
              hookspath=[],
              runtime_hooks=[],
              excludes=['FixTk', 'tcl', 'tk', '_tkinter', 'tkinter', 'Tkinter'],

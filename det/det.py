@@ -15,17 +15,14 @@ from os import listdir
 from os.path import isfile, join
 from Crypto.Cipher import AES
 from zlib import compress, decompress
-import dukpt
+from . import dukpt
+from . import plugins
 from binascii import unhexlify, hexlify
 import importlib
 import traceback
+from io import StringIO, BytesIO
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO, BytesIO
-
-if getattr(sys, 'frozen', False):
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     os.chdir(sys._MEIPASS)
 
 KEY = ""
@@ -142,10 +139,12 @@ class Exfiltration(object):
 
         # Load plugins
         # sys.path.insert(0, path)
-        for f in os.listdir(path):
-            fname, ext = os.path.splitext(f)
-            if ext == '.py' and fname != '__init__' and self.should_use_plugin(fname):
-                mod = importlib.import_module(path + '.' + fname)
+        for f in plugins.available():
+            if self.should_use_plugin(fname):
+                if fname not in config["plugins"]:
+                    warning(f"{fname} config not found in config file, skipping.")
+                    continue
+                mod = importlib.import_module(f"plugins.{fname}")
                 plugins[fname] = mod.Plugin(self, config["plugins"][fname])
 
     def should_use_plugin(self, plugin_name):
@@ -357,6 +356,7 @@ def main():
     global dukpt_client, dukpt_server
 
     parser = argparse.ArgumentParser(
+        prog='det.py',
         description='Data Exfiltration Toolkit (@PaulWebSec)')
     parser.add_argument('-c', action="store", dest="config", default=None,
                         help="Configuration file (eg. '-c ./config-sample.json')")
