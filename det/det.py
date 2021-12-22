@@ -134,18 +134,15 @@ class Exfiltration(object):
         self.results = results
         self.target = "127.0.0.1"
 
-        path = "plugins"
-        plugins = {}
-
         # Load plugins
         # sys.path.insert(0, path)
-        for f in plugins.available():
+        for fname in plugins.available():
             if self.should_use_plugin(fname):
                 if fname not in config["plugins"]:
                     warning(f"{fname} config not found in config file, skipping.")
                     continue
-                mod = importlib.import_module(f"plugins.{fname}")
-                plugins[fname] = mod.Plugin(self, config["plugins"][fname])
+                mod = importlib.import_module(f"det.plugins.{fname}")
+                mod.Plugin(self, config["plugins"][fname])
 
     def should_use_plugin(self, plugin_name):
         # if the plugin has been specified specifically (-p twitter)
