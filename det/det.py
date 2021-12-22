@@ -215,7 +215,7 @@ class Exfiltration(object):
                 warning(f"[{jobid}] Found old pending data, parsing now...")
                 for _ in range(len(files['pending'][jobid])):
                     self.process_data(files['pending'][jobid].pop())
-                if len(files['pending'][jobid] == 0:
+                if len(files['pending'][jobid]) == 0:
                         del files['pending'][jobid]
         else:
             warning(f"[{jobid}] REGISTER packet received, but it's a duplicate, ignoring...")
