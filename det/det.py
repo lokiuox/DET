@@ -36,7 +36,7 @@ MAX_TIME_SLEEP = 30
 MIN_BYTES_READ = 1
 MAX_BYTES_READ = 500
 COMPRESSION    = True
-files = {}
+files = {'pending': {}}
 threads = []
 config = None
 dukpt_client = None
@@ -210,7 +210,13 @@ class Exfiltration(object):
             f['data'] = {}
             f['packets_len'] = -1
             files[jobid] = f
-            warning(f"[{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
+            ok(f"[{jobid}] REGISTER packet for file {f['filename']} with checksum {f['checksum']}")
+            if jobid in files['pending']:
+                warning(f"[{jobid}] Found old pending data, parsing now...")
+                for _ in range(len(files['pending'][jobid])):
+                    self.process_data(files['pending'][jobid].pop())
+                if len(files['pending'][jobid] == 0:
+                        del files['pending'][jobid]
         else:
             warning(f"[{jobid}] REGISTER packet received, but it's a duplicate, ignoring...")
 
@@ -249,6 +255,12 @@ class Exfiltration(object):
             self.process_data(data)
             self.message_queue.task_done()
 
+    def store_pending_data(self, jobid, data):
+        global files
+        if not jobid in files['pending']:
+            files['pending'][jobid] = []
+        files['pending'][jobid].append(data)
+
     def process_data(self, data):
         global files
         try:
@@ -265,7 +277,8 @@ class Exfiltration(object):
                 # done packet
                 elif (message[2] == "DONE"):
                     if jobid not in files:
-                        warning(f"[{jobid}][!] received DONE packet for unknown JOBID!")
+                        warning(f"[{jobid}][!] received DONE packet for unknown JOBID! Storing as pending.")
+                        self.store_pending_data(jobid, data)
                         return
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
@@ -288,7 +301,8 @@ class Exfiltration(object):
                     elif jobid in files and packet_nr in files[jobid]['data']:
                         warning(f"[{jobid}] DUPLICATE DATA file received, ignoring.")
                     else:
-                        warning(f"[{jobid}][!] received DATA packet for unknown JOBID!")
+                        self.store_pending_data(jobid, data)
+                        warning(f"[{jobid}][!] received DATA packet for unknown JOBID! Storing as pending.")
         except Exception:
             traceback.print_exc()
             raise
