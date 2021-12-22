@@ -3,6 +3,7 @@ from dnslib import DNSRecord
 import socket
 from dpkt import dns
 from random import choice
+import sys
 
 app_exfiltrate = None
 config = None
@@ -47,7 +48,11 @@ def sniff(handler):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     IP = "0.0.0.0"
     PORT = config['port']
-    sock.bind((IP, PORT))
+    try:
+        sock.bind((IP, PORT))
+    except PermissionError:
+        app_exfiltrate.log_message('warning', f"[dns] cannot bind on port {PORT}: PermissionError")
+        sys.exit()
     while True:
         try:
             data, addr = sock.recvfrom(65536)

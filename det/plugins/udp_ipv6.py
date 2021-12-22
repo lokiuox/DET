@@ -29,21 +29,17 @@ def listen():
 
 def sniff(handler):
     port = config['port']
-    host = '::'
-    res = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
-    af, socktype, proto, canonname, sa = res[0]
     try:
-        # server_address = ('', port)
+        server_address = ('::', port)
         sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-        sock.bind(sa)
-        # sock.bind(server_address)
+        sock.bind(server_address)
         app_exfiltrate.log_message(
             'info', "[udp_ipv6] Starting server on port {}...".format(port))
         # sock.listen(1)
-    except Exception as e:
+    except PermissionError:
         app_exfiltrate.log_message(
             'warning', "[udp_ipv6] Couldn't bind on port {}...".format(port))
-        sys.exit(-1)
+        sys.exit()
 
     while True:
         data, client_address = sock.recvfrom(4096)

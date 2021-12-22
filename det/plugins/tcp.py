@@ -34,10 +34,10 @@ def sniff(handler):
         app_exfiltrate.log_message(
             'info', "[tcp] Starting server on port {}...".format(port))
         sock.listen(1)
-    except:
+    except PermissionError:
         app_exfiltrate.log_message(
             'warning', "[tcp] Couldn't bind on port {}...".format(port))
-        sys.exit(-1)
+        sys.exit()
 
     while True:
         connection, client_address = sock.accept()

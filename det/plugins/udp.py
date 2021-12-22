@@ -31,10 +31,10 @@ def sniff(handler):
         sock.bind(server_address)
         app_exfiltrate.log_message(
             'info', "[udp] Starting server on port {}...".format(port))
-    except socket.error as e:
+    except PermissionError:
         app_exfiltrate.log_message(
             'warning', "[udp] Couldn't bind on port {}...".format(port))
-        sys.exit(-1)
+        sys.exit()
 
     while True:
         app_exfiltrate.log_message('info', "[udp] Waiting for connections...")

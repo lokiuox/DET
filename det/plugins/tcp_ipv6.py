@@ -31,7 +31,11 @@ def sniff(handler):
     port = config['port']
     server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     sockaddr = ('::', port)
-    server_socket.bind(sockaddr)
+    try:
+        server_socket.bind(sockaddr)
+    except PermissionError:
+        app_exfiltrate.log_message('warning', f"[tcp_ipv6] cannot bind on port {port}: PermissionError")
+        sys.exit()
     server_socket.listen(1)
     app_exfiltrate.log_message('info', "[tcp_ipv6] Starting server on interface '::1' and port {}...".format(port))
     while True:

@@ -108,13 +108,14 @@ def relay_http_request(data):
 
 def server(data_handler):
     try:
-        server_address = ('', config['port'])
+        server_address = ('0.0.0.0', config['port'])
         httpd = HTTPServer(server_address, S)
         httpd.handler = data_handler
         httpd.serve_forever()
-    except:
+    except PermissionError:
         app_exfiltrate.log_message(
             'warning', "[http] Couldn't bind http daemon on port {}".format(config['port']))
+        sys.exit()
 
 def listen():
     app_exfiltrate.log_message('info', "[http] Starting httpd...")

