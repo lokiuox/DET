@@ -214,8 +214,7 @@ def listen():
                     app_exfiltrate.log_message('info', "[sip] Received {0} bytes from {1}".format(len(payload), addr[0]))
                     app_exfiltrate.retrieve_data(base64.b64decode(payload.encode()).decode())
         except Exception as e:
-            print(traceback.format_exc())
-            print('exception: ' + repr(e))
+            traceback.print_exc()
             
 def get_external_ip():
     r = requests.get("http://v4.ident.me")
