@@ -1,7 +1,7 @@
 tweepy==3.10.0
 pysocks
 dnslib
-pycrypto
+PyCryptoDome
 slack_sdk
 bitstring
 dpkt>=1.9.1
