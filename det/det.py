@@ -1,5 +1,6 @@
 import os
 import random
+import queue
 import threading
 import hashlib
 import argparse
@@ -140,6 +141,7 @@ class Exfiltration(object):
         self.plugins = {}
         self.results = results
         self.target = "127.0.0.1"
+        self.message_queue = queue.Queue()
 
         # Load plugins
         # sys.path.insert(0, path)
@@ -239,6 +241,15 @@ class Exfiltration(object):
         del files[jobid]
 
     def retrieve_data(self, data):
+        self.message_queue.put(data)
+
+    def listen(self):
+        while True:
+            data = self.message_queue.get()
+            self.process_data(data)
+            self.message_queue.task_done()
+
+    def process_data(self, data):
         global files
         try:
             message = data
@@ -428,7 +439,7 @@ def main():
         
         # Keep listening until a CTRL+C is sent
         try:
-            threading.Event().wait()
+            app.listen() # Blocking call
         except KeyboardInterrupt:
             pass
 
@@ -457,8 +468,8 @@ def main():
                 for plugin_name in app.get_plugins().keys():
                     thread = ExfiltrateFile(app, file_to_send, plugin_name)
                     thread.daemon = True
+                    threads.append(thread)
                     thread.start()
-                    thread.join()
         
         # Wait for all threads to join
         try:
