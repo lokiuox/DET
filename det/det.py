@@ -12,7 +12,7 @@ import struct
 import tempfile
 from random import randint
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, dirname
 from Crypto.Cipher import AES
 from zlib import compress, decompress
 from . import dukpt
@@ -23,7 +23,12 @@ import traceback
 from io import StringIO, BytesIO
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    os.chdir(sys._MEIPASS)
+    if "_MEI" in sys._MEIPASS:
+        # one file mode
+        os.chdir(dirname(sys.executable))
+    else:
+        # one folder mode
+        os.chdir(sys._MEIPASS)
 
 KEY = ""
 MIN_TIME_SLEEP = 1
@@ -47,7 +52,6 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-
 def display_message(message):
     print("[%s] %s" % (time.strftime("%Y-%m-%d.%H:%M:%S", time.gmtime()), message))
 
@@ -62,6 +66,9 @@ def ok(message):
 
 def info(message):
     display_message("%s%s%s" % (bcolors.OKBLUE, message, bcolors.ENDC))
+
+if os.name == "nt":
+    warning, ok, info = [lambda m: display_message(m)]*3
 
 # http://stackoverflow.com/questions/12524994/encrypt-decrypt-using-pycrypto-aes-256
 def aes_encrypt(message, key=KEY):
