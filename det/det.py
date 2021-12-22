@@ -264,6 +264,9 @@ class Exfiltration(object):
                     self.register_file(message)
                 # done packet
                 elif (message[2] == "DONE"):
+                    if jobid not in files:
+                        warning(f"[{jobid}] received DONE packet for unknown JOBID!")
+                        return
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
                     if files[jobid]['packets_len'] == len(files[jobid]['data']):
@@ -285,7 +288,7 @@ class Exfiltration(object):
                     elif jobid in files and packet_nr in files[jobid]['data']:
                         warning(f"[{jobid}] DUPLICATE DATA file received, ignoring.")
                     else:
-                        warning(f"[{jobid}][!] received DATA PACKET for unknown JOBID!")
+                        warning(f"[{jobid}][!] received DATA packet for unknown JOBID!")
         except Exception:
             traceback.print_exc()
             raise
