@@ -7,7 +7,6 @@ import sys
 import string
 import time
 import json
-import signal
 import struct
 import tempfile
 from random import randint
@@ -41,6 +40,7 @@ threads = []
 config = None
 dukpt_client = None
 dukpt_server = None
+app = None
 
 class bcolors:
     HEADER = '\033[95m'
@@ -357,17 +357,11 @@ class ExfiltrateFile(threading.Thread):
         f.close()
         sys.exit(0)
 
-
-def signal_handler(bla, frame):
-    global threads
-    warning('Killing DET and its subprocesses')
-    os.kill(os.getpid(), signal.SIGKILL)
-
-
 def main():
     global MAX_TIME_SLEEP, MIN_TIME_SLEEP, KEY, MAX_BYTES_READ, MIN_BYTES_READ, COMPRESSION
     global threads, config
     global dukpt_client, dukpt_server
+    global app
 
     parser = argparse.ArgumentParser(
         prog='det.py',
@@ -400,7 +394,7 @@ def main():
         config = json.load(data_file)
 
     # catch Ctrl+C
-    signal.signal(signal.SIGINT, signal_handler)
+    #signal.signal(signal.SIGINT, signal_handler)
     ok("CTRL+C to kill DET")
 
     MIN_TIME_SLEEP = int(config['min_time_sleep'])
@@ -431,6 +425,13 @@ def main():
             thread.daemon = True
             thread.start()
             threads.append(thread)
+        
+        # Keep listening until a CTRL+C is sent
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            pass
+
     # EXFIL mode
     else:
         if (results.folder is None and results.file is None):
@@ -458,10 +459,12 @@ def main():
                     thread.daemon = True
                     thread.start()
                     thread.join()
+        
+        # Wait for all threads to join
+        for thread in threads:
+            thread.join()
 
-    # Join for the threads
-    for thread in threads:
-        thread.join()
+    ok("Goodbye!")
 
 if __name__ == '__main__':
     main()
