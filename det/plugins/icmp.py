@@ -49,8 +49,14 @@ def listen():
 
 def sniff(handler):
     """ Sniffs packets and looks for icmp requests """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-    sock.bind(('', 1))
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        sock.bind(('0.0.0.0', 1))
+    except PermissionError:
+        app_exfiltrate.log_message(
+            'warning', '[icmp] ICMP plugin requires root privileges, stopping'
+            )
+        return
     while True :
         try:
             data = sock.recv(65535)
