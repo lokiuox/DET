@@ -8,7 +8,7 @@ DET (is provided AS IS), is a proof of concept to perform Data Exfiltration usin
 The idea was to create a generic toolkit to plug any kind of protocol/service to test implmented Network Monitoring and Data Leakage Prevention (DLP) solutions configuration, against different data exfiltration techniques.
 
 # Features of this fork:
-- Completely ported to python3, both main app and modules
+- Completely ported to **Python3**
 - Made into a Python package (no setup.py for now)
 - Fixed concurrency issues (the listener would not work correctly with multiple connections at the same time)
 - Optimized the code a little and updated to work with newer libraries
