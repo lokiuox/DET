@@ -265,7 +265,7 @@ class Exfiltration(object):
                 # done packet
                 elif (message[2] == "DONE"):
                     if jobid not in files:
-                        warning(f"[{jobid}] received DONE packet for unknown JOBID!")
+                        warning(f"[{jobid}][!] received DONE packet for unknown JOBID!")
                         return
                     files[jobid]['packets_len'] = int(message[1])
                     #Check if all packets have arrived
