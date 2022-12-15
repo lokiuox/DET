@@ -25,7 +25,7 @@ Slides are available [here](https://docs.google.com/presentation/d/11uk6d-xougn3
 Clone the repo: 
 
 ```bash
-git clone https://github.com/PaulSec/DET.git
+git clone https://github.com/lokiuox/DET.git
 ```
 
 Then: 
@@ -243,7 +243,7 @@ So far, DET supports multiple protocols, listed here:
 - [X] HTTP(S)
 - [X] ICMP
 - [X] DNS
-- [X] SMTP/IMAP (Pure SMTP + Gmail)
+- [X] SMTP/IMAP (Direct SMTP + Email service)
 - [X] Raw TCP / UDP
 - [X] FTP
 - [X] SIP
@@ -251,7 +251,7 @@ So far, DET supports multiple protocols, listed here:
 - [X] Derived Unique Key Per Transaction (DUKPT) key management
 
 And other "services": 
-
+- [X] Github Gists
 - [X] Google Docs (Unauthenticated)
 - [X] Twitter (Direct Messages)
 - [X] Slack
@@ -261,10 +261,6 @@ And other "services":
 - [X] Add proper encryption (eg. AES-256) Thanks to [ryanohoro](https://github.com/ryanohoro)
 - [X] Compression (extremely important!) Thanks to [chokepoint](https://github.com/chokepoint)
 - [X] Add support for C&C-like multi-host file exfiltration (Proxy mode)
-- [ ] Discovery mode (where distributed agents can learn about the presence of each other)
-- [ ] Egress traffic testing
-- [ ] Proper data obfuscation and integrating [Cloakify Toolset Toolset](https://github.com/trycatchhcf/cloakify)
-- [ ] FlickR [LSB Steganography](https://github.com/RobinDavid/LSB-Steganography) and Youtube modules
 
 # References
 
@@ -279,6 +275,7 @@ Some pretty cool references/credits to people I got inspired by with their proje
 
 # Contact/Contributing
 
+(Original author's contact info)    
 You can reach me on Twitter [@PaulWebSec](https://twitter.com/PaulWebSec).
 Feel free if you want to contribute, clone, fork, submit your PR and so on.
 
